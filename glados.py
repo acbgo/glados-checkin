@@ -45,7 +45,9 @@ if __name__ == '__main__':
         email = state.json()['data']['email']
         if 'message' in checkin.text:
             mess = checkin.json()['message']
-            print(mess+'--剩余('+time+')天\n' + email)  # 日志输出
+            if 'Repeats' in mess:
+                mess = "Checkin Repeats!"
+                print(mess + '--剩余(' + time + ')天\n' + email)  # 日志输出
             sendContent += mess + '--剩余(' + time + ')天\n' + email
         else:
             requests.get('http://www.pushplus.plus/send?token=' + sckey + '&content=' + email + 'cookie已失效')
