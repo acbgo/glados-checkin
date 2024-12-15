@@ -32,3 +32,7 @@ jobs:
           GLADOS_COOKIE: "${{ secrets.GLADOS_COOKIE }}"
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
       - uses: gautamkrishnar/keepalive-workflow@master
+
+notifications:
+  email: false
+  # 构建失败时不发邮件通知
