@@ -32,11 +32,11 @@ jobs:
         env:
           GLADOS_COOKIE: "${{ secrets.GLADOS_COOKIE }}"
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
-  # keepalive-job:
-  #   name: Keepalive Workflow
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     actions: write
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: gautamkrishnar/keepalive-workflow@v2
+  keepalive-job:
+    name: Keepalive Workflow
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - uses: actions/checkout@v3
+      - uses: gautamkrishnar/keepalive-workflow@v2
