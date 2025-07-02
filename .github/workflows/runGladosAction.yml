@@ -35,8 +35,6 @@ jobs:
   keepalive-job:
     name: Keepalive Workflow
     runs-on: ubuntu-latest
-    schedule:
-      - cron: '0 */12 * * *'  # 每12小时运行一次
     steps:
       - name: Ping Keepalive
         run: |
