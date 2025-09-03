@@ -32,6 +32,7 @@ if __name__ == '__main__':
     payload = {
         'token': 'glados.one'
     }
+    left_time = ''
     for cookie in cookies:
         checkin = requests.post(url, headers={'cookie': cookie, 'referer': referer, 'origin': origin,
                                               'user-agent': useragent,
@@ -42,6 +43,7 @@ if __name__ == '__main__':
         # --------------------------------------------------------------------------------------------------------#
         time = state.json()['data']['leftDays']
         time = time.split('.')[0]
+        left_time = time
         email = state.json()['data']['email']
         if 'message' in checkin.text:
             mess = checkin.json()['message']
@@ -56,4 +58,4 @@ if __name__ == '__main__':
     # --------------------------------------------------------------------------------------------------------#
     if sckey != "":
         requests.get(
-            'http://www.pushplus.plus/send?token=' + sckey + '&title=' + '签到成功' + '&content=' + sendContent)
+            'http://www.pushplus.plus/send?token=' + sckey + '&title=' + '签到成功' + '--剩余(' + left_time + ')天' + '&content=' + sendContent)
