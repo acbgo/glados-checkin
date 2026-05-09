@@ -25,14 +25,14 @@ if __name__ == '__main__':
         exit(0)
 
     # 定义url等相关变量
-    checkin_url = "https://glados.cloud/api/user/checkin"
-    state_url = "https://glados.cloud/api/user/status"
-    points_url = "https://glados.cloud/api/user/points"
-    referer = 'https://glados.cloud/console/checkin'
-    origin = "https://glados.cloud"
+    checkin_url = "https://railgun.info/api/user/checkin"
+    state_url = "https://railgun.info/api/user/status"
+    points_url = "https://railgun.info/api/user/points"
+    referer = 'https://railgun.info/console/checkin'
+    origin = "https://railgun.info"
     useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36"
     payload = {
-        'token': 'glados.cloud'
+        'token': 'railgun.info'
     }
     left_time = ''
 
@@ -59,20 +59,18 @@ if __name__ == '__main__':
         print(state_sata.json()['message'])
         sendContent += state_sata.json()['message']
     else:
-        time = state_sata.json()['data']['leftDays']
-        time = time.split('.')[0]
-        left_time = time
+        left_time = str(state_sata.json()['data']['leftDays'])
         email = state_sata.json()['data']['email']
         if 'message' in checkin_data.text:
             mess = checkin_data.json()['message']
             if 'Repeats' in mess:
                 mess = "Checkin Repeats!"
-                print(mess + '--剩余(' + time + ')天\n' + email)  # 日志输出
-            sendContent += mess + '--剩余(' + time + ')天\n' + email
+                print(mess + '--剩余(' + left_time + ')天\n' + email)  # 日志输出
+            sendContent += mess + '--剩余(' + left_time + ')天\n' + email
         else:
             requests.get('http://www.pushplus.plus/send?token=' + sckey + '&content=' + email + 'cookie已失效')
             print('cookie已失效')  # 日志输出
-            sendContent += 'cookie已失效' + '----剩余(' + time + ')天\n' + email
+            sendContent += 'cookie已失效' + '----剩余(' + left_time + ')天\n' + email
     # --------------------------------------------------------------------------------------------------------#
     if sckey != "":
         requests.get(
