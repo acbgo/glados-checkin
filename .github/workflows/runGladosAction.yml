@@ -12,6 +12,9 @@ on:
   watch:
     types: [started]
 
+permissions:
+  contents: write
+
 jobs:
   checkin-job:
     name: Glados Checkin
@@ -36,7 +39,24 @@ jobs:
     name: Keepalive Workflow
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Keepalive
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update repository heartbeat
+        shell: bash
         run: |
-          echo "Workflow keep-alive at $(date)"
-          curl -s --head https://bing.com  # 替换为你想访问的URL
+          day=$(date -u +%d)
+
+          # 每月 1 日和 15 日提交一次，避免每天产生无意义提交
+          if [ "$day" = "01" ] || [ "$day" = "15" ]; then
+            date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/actions-heartbeat
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+            git add .github/actions-heartbeat
+            git commit -m "chore: update actions heartbeat"
+            git push
+          else
+            echo "今天不更新 heartbeat"
+          fi
