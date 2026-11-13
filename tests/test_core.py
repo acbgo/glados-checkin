@@ -31,6 +31,18 @@ class FakeTransport:
 
 
 class ConfigTests(unittest.TestCase):
+    def test_account_overview_only_reads_status_and_points(self):
+        from checkin import read_account_overview
+        account = Account('rail', 'railgun.info', 'cookie', exchange_plan='plan500')
+        http = FakeTransport({
+            ('GET', 'https://railgun.info/api/user/status'): [FakeResponse({'code': 0, 'data': {'leftDays': 110}})],
+            ('GET', 'https://railgun.info/api/user/points'): [FakeResponse({'code': 0, 'points': '147', 'history': [{'change': '1.0'}], 'plans': {'plan100': {'points': 100, 'days': 10}}})],
+        })
+        result = read_account_overview([account], transport=http)[0]
+        self.assertEqual((result.points, result.left_days, result.points_change), ('147', '110', '+1'))
+        self.assertEqual(result.exchange_options, ('✅ 100分→10天：可兑换',))
+        self.assertEqual([call[0] for call in http.calls], ['GET', 'GET'])
+
     def test_points_display_uses_integer_and_exchange_icons(self):
         from checkin import _balance_details
         points, change, options = _balance_details({'code': 0, 'points': '147',

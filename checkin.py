@@ -470,6 +470,36 @@ def run_accounts(accounts: Sequence[Account], *, push_token: str = '', transport
     return RunReport(results, sent)
 
 
+def read_account_overview(accounts: Sequence[Account], *, transport=None) -> tuple[AccountResult, ...]:
+    transport = transport or requests
+    results = []
+    for account in accounts:
+        domain = account.domain
+        points = days = change = '未知'
+        options = ()
+        errors = []
+        try:
+            status, domain = _request_with_fallback(transport, account, 'GET', '/api/user/status')
+            if status.get('code') != 0 or not isinstance(status.get('data'), dict):
+                raise RequestFailure('账号状态查询失败')
+            days = str(status['data'].get('leftDays', '未知')).split('.')[0]
+        except RequestFailure as exc:
+            errors.append(str(exc))
+            if not exc.retryable:
+                results.append(AccountResult(account.name, domain, False, '；'.join(errors)))
+                continue
+        try:
+            balance, domain = _request_with_fallback(transport, account, 'GET', '/api/user/points', domain)
+            points, change, options = _balance_details(balance)
+            if points == '未知':
+                errors.append('积分查询失败')
+        except RequestFailure as exc:
+            errors.append(str(exc))
+        results.append(AccountResult(account.name, domain, not errors, '；'.join(errors) if errors else '查询成功',
+                                     points, days, change, options))
+    return tuple(results)
+
+
 def run_diagnostic(accounts: Sequence[Account], *, transport=None) -> RunReport:
     if not accounts:
         raise ConfigError('至少需要一个账号')
