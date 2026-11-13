@@ -15,7 +15,20 @@ from checkin import (ConfigError, EXCHANGE_PLANS, SUPPORTED_DOMAINS,
 
 
 CONFIG_FILE = Path(__file__).with_name('config.local.json')
+LOG_FILE = Path(__file__).with_name('checkin.log')
 st.set_page_config(page_title='GLaDOS 签到管理', page_icon='☑️', initial_sidebar_state='collapsed')
+st.markdown('''<style>
+    button[kind="primary"] {
+        background-color: #d9efff;
+        border-color: #a8d6f5;
+        color: #174b6b;
+    }
+    button[kind="primary"]:hover {
+        background-color: #bfe3fa;
+        border-color: #80c4ed;
+        color: #174b6b;
+    }
+</style>''', unsafe_allow_html=True)
 st.title('GLaDOS 签到管理')
 
 if not CONFIG_FILE.exists():
@@ -48,6 +61,8 @@ if not st.session_state.get('authenticated', False):
             st.error('密码错误')
     st.stop()
 
+page = st.sidebar.radio('页面', ['主页', '运行日志', '修改配置'])
+
 if st.sidebar.button('退出登录'):
     st.session_state.clear()
     st.rerun()
@@ -65,7 +80,34 @@ except ConfigError:
     st.error('账号或通知配置无效，请先在服务器上修复 config.local.json。')
     st.stop()
 
-with st.sidebar:
+if page == '运行日志':
+    st.subheader('运行日志')
+    st.caption('显示服务器 checkin.log 中最近的记录。')
+    if not LOG_FILE.exists():
+        st.info('日志文件尚不存在，定时任务首次运行后会自动创建。')
+    else:
+        try:
+            with LOG_FILE.open('rb') as log_file:
+                log_file.seek(0, 2)
+                size = log_file.tell()
+                log_file.seek(max(0, size - 1024 * 1024))
+                content = log_file.read().decode('utf-8', errors='replace')
+            if size > 1024 * 1024:
+                content = content.partition('\n')[2]
+            lines = content.splitlines()
+            count = st.session_state.get('log_lines', 50)
+            st.caption(f'显示最近 {min(count, len(lines))} 行；单次最多读取文件末尾 1 MB。')
+            st.code('\n'.join(lines[-count:]) if lines else '日志为空', language=None)
+            if count < len(lines) and st.button('展开更多'):
+                st.session_state.log_lines = count + 50
+                st.rerun()
+            if st.button('刷新日志'):
+                st.rerun()
+        except OSError:
+            st.error('无法读取日志文件，请检查文件权限。')
+    st.stop()
+
+if page == '修改配置':
     st.subheader('账号配置')
     st.caption('Cookie 不会回显；留空表示保留当前值。')
 
@@ -155,7 +197,7 @@ with st.sidebar:
         report = run_diagnostic(parsed_accounts)
         for result in report.results:
             st.write(f'{result.name} ({result.domain})：{result.message}')
-
+    st.stop()
 
 st.subheader('账号信息')
 st.caption('积分和天数来自只读查询；签到和兑换结果来自本页面手动运行。')
