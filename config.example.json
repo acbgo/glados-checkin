@@ -1,0 +1,27 @@
+{
+  "accounts": [
+    {
+      "name": "账号1-railgun",
+      "domain": ["railgun.info"],
+      "cookie": "REPLACE_WITH_RAILGUN_COOKIE",
+      "exchange_plan": "off"
+    },
+    {
+      "name": "账号2-cloud",
+      "domain": ["glados.cloud", "glados.rocks", "glados.network"],
+      "cookie": "gld:sess=REPLACE_WITH_SESSION; gld:sess.sig=REPLACE_WITH_SIGNATURE",
+      "user_agent": "Mozilla/5.0 REPLACE_WITH_BROWSER_USER_AGENT",
+      "exchange_plan": "off"
+    },
+    {
+      "name": "账号3-rocks",
+      "domain": ["glados.rocks"],
+      "cookie": "gld:sess=REPLACE_WITH_ANOTHER_SESSION; gld:sess.sig=REPLACE_WITH_ANOTHER_SIGNATURE",
+      "user_agent": "Mozilla/5.0 REPLACE_WITH_ANOTHER_BROWSER_USER_AGENT",
+      "exchange_plan": "off"
+    }
+  ],
+  "pushplus_token": "REPLACE_WITH_PUSHPLUS_TOKEN",
+  "notification_mode": "always",
+  "streamlit_admin_password": "REPLACE_WITH_ADMIN_PASSWORD"
+}

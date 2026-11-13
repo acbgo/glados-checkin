@@ -1,1 +1,7 @@
 .idea
+.env
+config.local.json
+.venv/
+__pycache__/
+*.pyc
+checkin.log
