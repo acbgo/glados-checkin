@@ -31,6 +31,35 @@ class FakeTransport:
 
 
 class ConfigTests(unittest.TestCase):
+    def test_turnstile_failure_is_reported_without_retry(self):
+        account = Account('cloud', 'glados.cloud', 'cookie')
+        http = FakeTransport({
+            ('GET', 'https://glados.cloud/api/user/checkin/challenge'): [FakeResponse({'code': 0, 'nonce': 'abc', 'ttl': 300000})],
+            ('POST', 'https://glados.cloud/api/user/checkin'): [FakeResponse({'code': 5, 'reason': 'turnstile', 'message': 'Cloudflare verification failed.'})],
+        })
+        waits = []
+        report = run_accounts([account], transport=http, sleep=waits.append)
+        self.assertFalse(report.success)
+        self.assertIn('Turnstile', report.results[0].message)
+        self.assertEqual(waits, [2.7])
+        self.assertEqual(len(http.calls), 2)
+
+    def test_failure_details_are_redacted_and_logged_on_final_attempt(self):
+        account = Account('cloud', 'glados.cloud', 'gld:sess=very-secret; gld:sess.sig=signature')
+        http = FakeTransport({
+            ('GET', 'https://glados.cloud/api/user/checkin/challenge'): [FakeResponse({'code': 0, 'nonce': 'abc', 'ttl': 300000})],
+            ('POST', 'https://glados.cloud/api/user/checkin'): [FakeResponse({'code': 5, 'reason': 'challenge-invalid',
+                'message': 'Proof expired for test@example.com token=very-secret', 'cookie': 'very-secret'})],
+        })
+        progress = []
+        report = run_accounts([account], transport=http, sleep=lambda _: None, max_attempts=1, progress=progress.append)
+        output = '\n'.join(progress)
+        self.assertFalse(report.success)
+        self.assertIn('Proof expired', output)
+        self.assertIn('challenge-invalid', output)
+        self.assertNotIn('test@example.com', output)
+        self.assertNotIn('very-secret', output)
+
     def test_account_overview_only_reads_status_and_points(self):
         from checkin import read_account_overview
         account = Account('rail', 'railgun.info', 'cookie', exchange_plan='plan500')

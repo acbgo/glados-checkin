@@ -167,9 +167,33 @@ def _has_control(value: str) -> bool:
 
 
 class RequestFailure(Exception):
-    def __init__(self, message: str, retryable: bool = True):
+    def __init__(self, message: str, retryable: bool = True, detail: str = ''):
         super().__init__(message)
         self.retryable = retryable
+        self.detail = detail
+
+
+def _safe_response_detail(payload: dict, account: Account) -> str:
+    parts = []
+    for key in ('code', 'reason', 'message'):
+        value = payload.get(key)
+        if key == 'code':
+            if type(value) is int and -9999 <= value <= 9999:
+                parts.append(f'code={value}')
+            continue
+        if not isinstance(value, str) or not value:
+            continue
+        value = re.sub(r'[\x00-\x1f\x7f]', ' ', value)
+        for secret in (account.cookie, account.user_agent or '', *(
+            pair.split('=', 1)[1].strip() for pair in account.cookie.split(';') if '=' in pair)):
+            if secret and len(secret) >= 4:
+                value = value.replace(secret, '[已隐藏]')
+        value = re.sub(r'(?i)\b(cookie|authorization|token|password|secret|session|nonce|proof)\s*[:=]\s*[^\s,;]+', r'\1=[已隐藏]', value)
+        value = re.sub(r'(?i)\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b', '[邮箱已隐藏]', value)
+        value = re.sub(r'https?://[^\s]+', '[链接已隐藏]', value)
+        value = re.sub(r'\b[A-Za-z0-9_+/=-]{32,}\b', '[已隐藏]', value)
+        parts.append(f'{key}={value[:200]}')
+    return '；'.join(parts)
 
 
 def _headers(account: Account, domain: str | None = None, form: bool = False) -> dict[str, str]:
@@ -231,10 +255,13 @@ def _request(transport, account: Account, method: str, path: str, *, data=None,
         raise RequestFailure('服务端响应格式无效')
     reason = str(payload.get('reason', '')).lower()
     message = str(payload.get('message', '')).lower()
+    if reason == 'turnstile':
+        raise RequestFailure('Cloudflare Turnstile 验证失败，请在官网完成验证后签到', False,
+                             _safe_response_detail(payload, account))
     if payload.get('code') == -2 or reason == 'device-mismatch' or any(marker in message for marker in (
         '没有权限', 'permission', 'unauthorized', 'automated check-in detected'
     )):
-        raise RequestFailure('会话或设备认证被拒绝', False)
+        raise RequestFailure('会话或设备认证被拒绝', False, _safe_response_detail(payload, account))
     return payload
 
 
@@ -293,7 +320,7 @@ def _checkin_once(account: Account, transport, sleep: Callable[[float], None], p
         if (challenge.get('code') != 0 or not isinstance(nonce, str) or not 0 < len(nonce) <= 4096
                 or type(ttl) not in (int, float) or not math.isfinite(ttl)
                 or ttl <= CHECKIN_CHALLENGE_DELAY * 1000):
-            raise RequestFailure('签到验证不可用')
+            raise RequestFailure('签到验证不可用', detail=_safe_response_detail(challenge, account))
         received_at = time.monotonic()
         proof = hashlib.sha256((nonce + '.glados-observe-v1').encode('utf-8')).hexdigest()
         sleep(CHECKIN_CHALLENGE_DELAY)
@@ -303,7 +330,7 @@ def _checkin_once(account: Account, transport, sleep: Callable[[float], None], p
             'token': domain, 'nonce': nonce, 'proof': proof,
         }, domain=domain)
     if not _is_checkin_success(result):
-        raise RequestFailure(_checkin_failure(result))
+        raise RequestFailure(_checkin_failure(result), detail=_safe_response_detail(result, account))
     message = str(result.get('message', '签到成功'))
     # API 文本可包含账号信息，控制台和推送只使用固定结果描述。
     return ('今日已签到' if ('repeat' in message.lower() or 'already checked in today' in message.lower()) else '签到成功'), domain
@@ -349,6 +376,8 @@ def _account_result(account: Account, transport, sleep: Callable[[float], None],
             break
         except RequestFailure as exc:
             message = str(exc)
+            if progress and exc.detail:
+                progress(f'🔎 {account.name} 服务端响应：{exc.detail}')
             if not exc.retryable or attempt == attempts - 1:
                 return AccountResult(account.name, account.domain, False, message)
             if progress:
